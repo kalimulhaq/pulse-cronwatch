@@ -12,6 +12,7 @@
                 id="select-cronwatch-order-by"
                 label="Sort by"
                 :options="[
+                    'next_due' => 'next due',
                     'failed' => 'failed',
                     'success' => 'success',
                     'avg_duration' => 'avg duration',
@@ -34,10 +35,14 @@
                     <col width="0%" />
                     <col width="0%" />
                     <col width="0%" />
+                    <col width="0%" />
+                    <col width="0%" />
                 </colgroup>
                 <x-pulse::thead>
                     <tr>
                         <x-pulse::th>Command</x-pulse::th>
+                        <x-pulse::th class="text-right">Cron</x-pulse::th>
+                        <x-pulse::th class="text-right">Next due</x-pulse::th>
                         <x-pulse::th class="text-right">Last run</x-pulse::th>
                         <x-pulse::th class="text-right">Avg</x-pulse::th>
                         <x-pulse::th class="text-right">Success</x-pulse::th>
@@ -54,13 +59,29 @@
                                     {{ $row->command }}
                                 </code>
                             </x-pulse::td>
+                            <x-pulse::td numeric class="text-gray-700 dark:text-gray-300 whitespace-nowrap font-mono">
+                                @if ($row->cron)
+                                    {{ $row->cron }}
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-600">—</span>
+                                @endif
+                            </x-pulse::td>
+                            <x-pulse::td numeric class="text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                @if ($row->next_due)
+                                    <span title="{{ $row->next_due }}">
+                                        {{ \Carbon\CarbonImmutable::parse($row->next_due)->diffForHumans() }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-600">—</span>
+                                @endif
+                            </x-pulse::td>
                             <x-pulse::td numeric class="text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 @if ($row->last_run)
                                     <span title="{{ $row->last_run }}">
                                         {{ \Carbon\CarbonImmutable::parse($row->last_run)->diffForHumans() }}
                                     </span>
                                 @else
-                                    <span class="text-gray-400 dark:text-gray-600">—</span>
+                                    <span class="text-gray-400 dark:text-gray-600">Never</span>
                                 @endif
                             </x-pulse::td>
                             <x-pulse::td numeric class="text-gray-700 dark:text-gray-300">

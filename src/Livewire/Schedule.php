@@ -2,12 +2,14 @@
 
 namespace Kalimulhaq\PulseCronwatch\Livewire;
 
+use Illuminate\Console\Scheduling\Schedule as LaravelSchedule;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Url;
+use Throwable;
 
 #[Lazy]
 class Schedule extends Card
@@ -15,10 +17,10 @@ class Schedule extends Card
     /**
      * Column to sort the table by.
      *
-     * @var 'last_run'|'failed'|'avg_duration'|'success'
+     * @var 'last_run'|'failed'|'avg_duration'|'success'|'next_due'
      */
     #[Url(as: 'cronwatch-order-by')]
-    public string $orderBy = 'failed';
+    public string $orderBy = 'next_due';
 
     public function render(): Renderable
     {
@@ -35,8 +37,9 @@ class Schedule extends Card
     }
 
     /**
-     * Build a single collection of rows, one per scheduled command, with
-     * success / failed / skipped counts, max + avg duration, and last run.
+     * Build a single collection of rows, one per scheduled command, joining
+     * Laravel's live Schedule registry (for cron + next due) with recorded
+     * Pulse data (for counts, durations, last run).
      *
      * @return Collection<int, object>
      */
@@ -56,17 +59,23 @@ class Schedule extends Card
             fn ($value) => [$value->key => $value->value],
         );
 
+        $scheduled = $this->scheduledEvents();
+
         $keys = $counts->keys()
             ->merge($durations->keys())
             ->merge($lastRuns->keys())
+            ->merge($scheduled->keys())
             ->unique();
 
-        $rows = $keys->map(function (string $key) use ($counts, $durations, $lastRuns) {
+        $rows = $keys->map(function (string $key) use ($counts, $durations, $lastRuns, $scheduled) {
             $count = $counts->get($key);
             $duration = $durations->get($key);
+            $info = $scheduled->get($key);
 
             return (object) [
                 'command' => $key,
+                'cron' => $info['cron'] ?? null,
+                'next_due' => $info['next_due'] ?? null,
                 'success' => (int) ($count->schedule_success ?? 0),
                 'failed' => (int) ($count->schedule_failed ?? 0),
                 'skipped' => (int) ($count->schedule_skipped ?? 0),
@@ -80,7 +89,44 @@ class Schedule extends Card
     }
 
     /**
-     * Sort the rows in place by the current orderBy column.
+     * Snapshot of Laravel's scheduled events keyed by signature, each value
+     * containing the cron expression and next due timestamp (ISO 8601).
+     *
+     * Wrapped in try/catch so a malformed scheduler entry can't take down the
+     * whole card — it just means that one row falls back to recorder-only data.
+     *
+     * @return Collection<string, array{cron: ?string, next_due: ?string}>
+     */
+    protected function scheduledEvents(): Collection
+    {
+        try {
+            $events = app(LaravelSchedule::class)->events();
+        } catch (Throwable) {
+            return collect();
+        }
+
+        return collect($events)->mapWithKeys(function ($event) {
+            $signature = $event->getSummaryForDisplay();
+
+            if (! is_string($signature) || trim($signature) === '') {
+                return [];
+            }
+
+            try {
+                $nextDue = $event->nextRunDate()->format(\DateTimeInterface::ATOM);
+            } catch (Throwable) {
+                $nextDue = null;
+            }
+
+            return [$signature => [
+                'cron' => method_exists($event, 'getExpression') ? $event->getExpression() : null,
+                'next_due' => $nextDue,
+            ]];
+        });
+    }
+
+    /**
+     * Sort the rows by the current orderBy column.
      *
      * @param  Collection<int, object>  $rows
      * @return Collection<int, object>
@@ -91,7 +137,9 @@ class Schedule extends Card
             'success' => $rows->sortByDesc('success'),
             'avg_duration' => $rows->sortByDesc('avg_duration'),
             'last_run' => $rows->sortByDesc('last_run'),
-            default => $rows->sortByDesc('failed'),
+            'failed' => $rows->sortByDesc('failed'),
+            // 'next_due' ascending: soonest first; null next_due (removed commands) goes last.
+            default => $rows->sortBy(fn ($row) => $row->next_due ?? '9999-12-31T23:59:59+00:00'),
         };
 
         return $sorted->values();
