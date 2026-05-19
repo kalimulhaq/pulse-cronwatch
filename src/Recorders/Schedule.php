@@ -7,6 +7,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
 use Illuminate\Console\Scheduling\Event;
+use Kalimulhaq\PulseCronwatch\Support\Signature;
 use Laravel\Pulse\Pulse;
 
 /**
@@ -102,6 +103,6 @@ class Schedule
             return null;
         }
 
-        return $summary;
+        return Signature::normalize($summary);
     }
 }

@@ -5,6 +5,20 @@ All notable changes to `kalimulhaq/pulse-cronwatch` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-19
+
+### Fixed
+- **Command column no longer shows the shell-wrapped form** (`'/usr/bin/php8.3' 'artisan' migration:foo > '/dev/null' 2>&1`) for string-scheduled artisan commands. The clean signature (`migration:foo`) is rendered, with the original shell form preserved as the cell tooltip. Closures and `->name('…')`-labelled tasks pass through unchanged.
+- **Cron and Next due columns now populate inside web requests.** The Schedule registry singleton is bound by the Console Kernel's `defineConsoleSchedule()` callback, which only runs when the Console Kernel is constructed — web requests construct the HTTP Kernel only. The card now resolves `Illuminate\Contracts\Console\Kernel` before reading `LaravelSchedule::events()`, so the registry is populated regardless of request type.
+
+### Added
+- **Adaptive Avg unit** — durations render with the unit that fits the magnitude: `ms` for sub-second, `s` for sub-minute, `m` for sub-hour, `h` otherwise (e.g. `412ms`, `5.1s`, `2.5m`, `1.1h`). The raw millisecond count remains available as the cell tooltip.
+- New `Kalimulhaq\PulseCronwatch\Support\Signature` and `Support\Duration` helpers (covered by unit tests).
+
+### Notes
+- Historical rows recorded before v0.3 are keyed by the shell-wrapped form; their cron/next-due cells will remain empty until those rows age out via Pulse's 7-day storage trim. No migration step is needed.
+- The shared `Signature::normalize()` is used by both the recorder (write side) and the card's registry merge (read side), so join keys stay consistent.
+
 ## [0.2.0] — 2026-05-18
 
 ### Added

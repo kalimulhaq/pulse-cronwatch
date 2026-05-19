@@ -3,9 +3,11 @@
 namespace Kalimulhaq\PulseCronwatch\Livewire;
 
 use Illuminate\Console\Scheduling\Schedule as LaravelSchedule;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\View;
+use Kalimulhaq\PulseCronwatch\Support\Signature;
 use Laravel\Pulse\Livewire\Card;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Url;
@@ -100,6 +102,12 @@ class Schedule extends Card
     protected function scheduledEvents(): Collection
     {
         try {
+            // The Schedule singleton is bound by the Console Kernel's
+            // defineConsoleSchedule() callback. Web requests construct the
+            // HTTP Kernel only, so resolving the Console Kernel here triggers
+            // the binding that populates events from App\Console\Kernel::schedule()
+            // and/or routes/console.php on first access of LaravelSchedule.
+            app(ConsoleKernel::class);
             $events = app(LaravelSchedule::class)->events();
         } catch (Throwable) {
             return collect();
@@ -111,6 +119,8 @@ class Schedule extends Card
             if (! is_string($signature) || trim($signature) === '') {
                 return [];
             }
+
+            $signature = Signature::normalize($signature);
 
             try {
                 $nextDue = $event->nextRunDate()->format(\DateTimeInterface::ATOM);

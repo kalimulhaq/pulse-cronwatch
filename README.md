@@ -16,11 +16,11 @@ The card lists every task your scheduler knows about — even ones that have nev
 
 | Column | What it shows |
 |--------|--------------|
-| `Command` | The scheduler's display signature (artisan command, closure name, or `->name(…)` label) |
+| `Command` | The scheduler's display signature, normalised to the clean artisan name (closures and `->name(…)` labels are preserved as-is); hover shows the full shell-wrapped form |
 | `Cron` | The cron expression from the live schedule, e.g. `0 1 * * *` |
 | `Next due` | Human-readable countdown to the next run, hover for absolute timestamp |
 | `Last run` | Time-ago of the most recent terminal event, or `Never` |
-| `Avg` | Average successful run duration over the selected Pulse period (ms) |
+| `Avg` | Average successful run duration with adaptive unit (`ms` / `s` / `m` / `h`); raw `ms` in the cell tooltip |
 | `Success` | Count of successful runs in the period |
 | `Failed` | Count of failed runs in the period (highlighted red when > 0) |
 | `Skipped` | Count of runs the scheduler skipped (overlap protection, `when()` callbacks, etc.) |
@@ -159,6 +159,7 @@ Sorting is configurable via the dropdown — defaults to **next due** (soonest f
 - **Closure-scheduled tasks without `->name('…')` collide.** Two closures both default to the same `"Closure"` display signature, so they merge into one row in the card. Use `->name('stable-name')` on each scheduled closure to keep them separate.
 - **Command rename = new row.** The card's join key is the scheduler's display signature. If you rename an artisan command or change its arguments, the new signature is treated as a different row; the old signature keeps its history.
 - **Pulse storage trimming applies.** Pulse auto-trims old entries per `pulse.storage.trim.keep` (default 7 days). Cronwatch rows follow the same retention; historical data older than the trim window won't appear.
+- **Cron / Next due require live schedule access.** The card reads `app(Illuminate\Console\Scheduling\Schedule::class)->events()` at render time. Web requests don't auto-bootstrap that registry, so the card resolves the Console Kernel for you — if you've heavily customised kernel bootstrapping, ensure `App\Console\Kernel::schedule()` (or `routes/console.php`) remains discoverable.
 
 ---
 

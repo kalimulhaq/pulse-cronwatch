@@ -84,9 +84,11 @@
                                     <span class="text-gray-400 dark:text-gray-600">Never</span>
                                 @endif
                             </x-pulse::td>
-                            <x-pulse::td numeric class="text-gray-700 dark:text-gray-300">
+                            <x-pulse::td numeric class="text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 @if ($row->avg_duration !== null)
-                                    {{ number_format($row->avg_duration) }}<span class="text-gray-400 dark:text-gray-600 text-xs">ms</span>
+                                    <span title="{{ number_format($row->avg_duration) }}ms">
+                                        {{ \Kalimulhaq\PulseCronwatch\Support\Duration::format($row->avg_duration) }}
+                                    </span>
                                 @else
                                     <span class="text-gray-400 dark:text-gray-600">—</span>
                                 @endif

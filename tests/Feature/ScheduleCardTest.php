@@ -73,6 +73,38 @@ class ScheduleCardTest extends TestCase
             ->assertSeeInOrder(['app:soon', 'app:later']);
     }
 
+    public function test_shell_wrapped_signature_is_normalised_for_display_and_join(): void
+    {
+        // Laravel wraps string-named scheduled commands as "'php' 'artisan' <cmd>",
+        // and getSummaryForDisplay() returns that shell form. After v0.3 the card
+        // should render the clean artisan signature and the registry-join should
+        // still populate the cron column.
+        $this->registerScheduledCommand('migration:developers-reelly', '0 1 * * *');
+
+        Livewire::withoutLazyLoading()
+            ->test(Schedule::class)
+            ->assertOk()
+            ->assertSee('migration:developers-reelly')
+            ->assertSee('0 1 * * *')
+            ->assertDontSee("'artisan'");
+    }
+
+    public function test_adaptive_duration_formatting_renders_hours_for_long_runs(): void
+    {
+        $now = CarbonImmutable::now();
+
+        // 4,098,800ms = 68.3 minutes → rendered cell shows "1.1h" (raw ms preserved in tooltip).
+        Pulse::record('schedule_success', 'app:long-migration', 4_098_800, $now)->count()->max()->avg();
+        Pulse::set('schedule_last_run', 'app:long-migration', $now->toIso8601String(), $now);
+        Pulse::ingest();
+
+        Livewire::withoutLazyLoading()
+            ->test(Schedule::class)
+            ->assertOk()
+            ->assertSee('app:long-migration')
+            ->assertSee('1.1h');
+    }
+
     /**
      * Register a console command in Laravel's Schedule registry so the
      * card sees it via app(Schedule::class)->events().
