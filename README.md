@@ -183,3 +183,9 @@ If you discover a security issue please email [kalim.dir@gmail.com](mailto:kalim
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+## Support
+
+If you find this package useful, consider supporting me on Ko-fi!
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kalimulhaq)
